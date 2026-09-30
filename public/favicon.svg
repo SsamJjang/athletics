@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="16" fill="#131311"/>
+  <path d="M10 44 L54 20" stroke="#e4462b" stroke-width="7" stroke-linecap="round"/>
+  <path d="M10 54 L54 30" stroke="#c6ef3c" stroke-width="4" stroke-linecap="round" opacity=".9"/>
+  <text x="32" y="30" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="20" fill="#f2efe7">GCS</text>
+</svg>
