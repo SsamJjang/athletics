@@ -52,13 +52,7 @@ function AccountMenu() {
     return () => document.removeEventListener('mousedown', onDown)
   }, [open])
 
-  if (!session) {
-    return (
-      <Link to="/login" className="btn btn-ink btn-sm">
-        Sign in
-      </Link>
-    )
-  }
+  if (!session) return null
 
   const name = profile?.full_name || profile?.email || 'Account'
   const role = access.is_admin
@@ -143,7 +137,7 @@ export default function Layout() {
             ))}
             {access.is_admin && (
               <NavLink to="/admin" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-                <span className="tag bg-volt text-[#131311]">Admin</span>
+                <span className="tag gold-fill">Admin</span>
               </NavLink>
             )}
           </nav>

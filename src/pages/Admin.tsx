@@ -233,7 +233,7 @@ function SportsTab() {
                 <span className="text-xs muted">/sports/{s.slug}</span>
               </span>
               <SeasonTag season={s.season} />
-              {s.tier === 'opportunity' && <span className="tag bg-volt text-[#131311]">Opportunity</span>}
+              {s.tier === 'opportunity' && <span className="tag gold-fill">Opportunity</span>}
               {!s.active && <span className="tag bg-surface-2">Hidden</span>}
             </button>
           </li>
@@ -277,7 +277,7 @@ function AthletesTab() {
                 <span className="block truncate font-semibold">{a.full_name}</span>
                 <span className="block truncate text-xs muted">{a.headline}</span>
               </span>
-              {a.featured && <span className="tag bg-volt text-[#131311]">★</span>}
+              {a.featured && <span className="tag gold-fill">★</span>}
             </button>
           ))}
         </div>
@@ -402,7 +402,7 @@ function PeopleTab() {
                 <span className="tag bg-surface-2">GCS</span>
               ) : isVerified(p) ? (
                 <div className="flex items-center gap-2">
-                  <span className="tag bg-volt text-[#131311]">{p.children.length ? 'Code-verified' : 'Admin-verified'}</span>
+                  <span className="tag gold-fill">{p.children.length ? 'Code-verified' : 'Admin-verified'}</span>
                   {p.admin_verified && (
                     <button type="button" className="btn btn-quiet btn-sm" onClick={() => void setVerified(p, false)}>
                       Unverify

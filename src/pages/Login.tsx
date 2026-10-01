@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link, Navigate, useSearchParams } from 'react-router-dom'
+import { Navigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { SCHOOL_DOMAIN, isConfigured } from '../lib/supabase'
-import { Logo } from '../components/Logo'
-import { Notice, Spinner } from '../components/ui'
+import { Splash } from '../components/RequireAuth'
+import { Notice } from '../components/ui'
 
 function GoogleMark() {
   return (
@@ -17,36 +17,64 @@ function GoogleMark() {
   )
 }
 
+/** Only same-site paths are honoured, so ?next= can't bounce people off-site. */
+function safeNext(raw: string | null) {
+  return raw && raw.startsWith('/') && !raw.startsWith('//') && !raw.startsWith('/login') ? raw : null
+}
+
+const RESEND_SECONDS = 60
+
 export default function Login() {
-  const { session, profile, loading, authError, signInWithGoogle, sendEmailCode, verifyEmailCode } = useAuth()
+  const { session, profile, ready, authError, signInWithGoogle, sendEmailCode, verifyEmailCode } = useAuth()
   const [params, setParams] = useSearchParams()
   const door = params.get('as') === 'parent' ? 'parent' : 'student'
+  const next = safeNext(params.get('next'))
   const [busy, setBusy] = useState(false)
   const [email, setEmail] = useState('')
   const [code, setCode] = useState('')
   const [sent, setSent] = useState(false)
+  const [cooldown, setCooldown] = useState(0)
   const [error, setError] = useState<string | null>(null)
 
-  if (loading) return <Spinner label="Checking your sign-in" />
-  if (session && profile) return <Navigate to={profile.kind === 'parent' ? '/family' : '/'} replace />
+  useEffect(() => {
+    if (cooldown <= 0) return
+    const t = window.setTimeout(() => setCooldown((c) => c - 1), 1000)
+    return () => window.clearTimeout(t)
+  }, [cooldown])
+
+  if (!ready) return <Splash label="Checking your sign-in" />
+  if (session && profile) return <Navigate to={next ?? (profile.kind === 'parent' ? '/family' : '/')} replace />
+
+  function switchDoor(d: 'student' | 'parent') {
+    setError(null)
+    const p: Record<string, string> = {}
+    if (d === 'parent') p.as = 'parent'
+    if (next) p.next = next
+    setParams(p, { replace: true })
+  }
 
   async function google() {
     setBusy(true)
-    await signInWithGoogle(door)
+    await signInWithGoogle('student', next ?? '/')
     setBusy(false)
   }
 
-  async function send(e: FormEvent) {
-    e.preventDefault()
+  async function send(e?: FormEvent) {
+    e?.preventDefault()
     setError(null)
     if (email.trim().toLowerCase().endsWith(`@${SCHOOL_DOMAIN}`)) {
-      return setError('That’s a school address — use the Student tab and sign in with Google.')
+      return setError('That’s a school address. Use the Student & staff tab and sign in with Google.')
     }
     setBusy(true)
-    const err = await sendEmailCode(email)
+    const err = await sendEmailCode(email, next ?? '/family')
     setBusy(false)
-    if (err) setError(/rate|seconds/i.test(err) ? 'Too many codes requested. Wait a minute and try again.' : err)
-    else setSent(true)
+    if (err) {
+      setError(/rate|seconds|security purposes/i.test(err) ? 'Too many codes requested. Wait a minute and try again.' : err)
+      return
+    }
+    setSent(true)
+    setCode('')
+    setCooldown(RESEND_SECONDS)
   }
 
   async function verify(e: FormEvent) {
@@ -55,140 +83,136 @@ export default function Login() {
     setBusy(true)
     const err = await verifyEmailCode(email, code)
     setBusy(false)
-    if (err) setError(/expired|invalid/i.test(err) ? 'That code is wrong or expired. Check the latest email, or send a new one.' : err)
+    if (err) setError(/expired|invalid/i.test(err) ? 'That code is wrong or has expired. Check the newest email, or send a new code.' : err)
   }
 
-  return (
-    <div className="grid min-h-dvh lg:grid-cols-[1.1fr_1fr]">
-      {/* ---------- Left: the poster ---------- */}
-      <div className="stage relative hidden overflow-hidden bg-ink p-12 text-paper lg:flex lg:flex-col lg:justify-between">
-        <div className="pointer-events-none absolute inset-0 opacity-[0.07]" style={{ backgroundImage: 'repeating-linear-gradient(0deg, #fff 0 1px, transparent 1px 64px)' }} aria-hidden />
-        <div className="pointer-events-none absolute -bottom-20 -left-10 h-[140%] w-40 rotate-[20deg] bg-signal" aria-hidden />
-        <div className="pointer-events-none absolute -bottom-20 left-36 h-[140%] w-8 rotate-[20deg] bg-volt" aria-hidden />
+  const shownError = error ?? authError
 
-        <Link to="/" className="relative w-fit rounded-md bg-paper p-2 text-ink">
-          <Logo />
-        </Link>
-        <div className="relative ml-auto max-w-lg text-right">
-          <p className="display text-[7.5rem] leading-[0.82]">
-            One
-            <br />
-            school.
-            <br />
-            <span className="text-volt">Every</span>
-            <br />
-            game.
-          </p>
+  return (
+    <div className="grid min-h-dvh lg:grid-cols-[1.05fr_1fr]">
+      {/* ---------- Poster: a band on phones, a full panel on desktop ---------- */}
+      <div className="crimson-stage relative overflow-hidden px-6 pb-14 pt-8 sm:px-10 lg:flex lg:flex-col lg:justify-between lg:p-12">
+        <img src="/crest.png" alt="" className="pointer-events-none absolute -bottom-24 -right-24 h-[115%] w-auto opacity-[0.08] lg:-bottom-16 lg:-right-20 lg:h-[85%]" aria-hidden />
+        <div className="pointer-events-none absolute -left-10 bottom-0 top-0 hidden w-16 -skew-x-[10deg] lg:block" style={{ background: 'var(--gold)' }} aria-hidden />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1.5 lg:hidden" style={{ background: 'var(--gold)' }} aria-hidden />
+
+        <div className="relative flex items-center gap-3 lg:pl-10">
+          <img src="/crest.png" alt="GCS crest" className="h-12 w-auto drop-shadow-lg lg:h-16" />
+          <div className="leading-none">
+            <p className="display text-2xl lg:text-3xl">Athletics</p>
+            <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.16em] text-[#f6efe2]/65">Gaonnuri Christian School</p>
+          </div>
         </div>
-        <p className="relative ml-auto max-w-sm text-right text-sm text-paper/60">
-          Gaonnuri Christian School Athletics — games, tryouts and deadlines for students and families.
-        </p>
+
+        <div className="relative mt-10 lg:mt-0 lg:pl-10">
+          <h1 className="display text-[clamp(3.2rem,12vw,4.5rem)] leading-[0.85] lg:text-[clamp(5rem,7vw,7.5rem)]">
+            One school.
+            <br />
+            <span className="gold-text">Every game.</span>
+          </h1>
+          <ul className="mt-8 hidden max-w-md space-y-3 text-[15px] text-[#f6efe2]/80 lg:block">
+            {[
+              ['📅', 'Every game, tryout and sign-up deadline on one calendar'],
+              ['✋', 'Sign up for tryouts and events in one tap'],
+              ['🏅', 'Meet the athletes behind the jerseys'],
+            ].map(([icon, text]) => (
+              <li key={text} className="flex items-center gap-3">
+                <span className="grid size-8 shrink-0 place-items-center rounded-full bg-black/20 text-sm" aria-hidden>
+                  {icon}
+                </span>
+                {text}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <p className="relative hidden text-xs text-[#f6efe2]/55 lg:block lg:pl-10">For GCS students, staff and families.</p>
       </div>
 
-      {/* ---------- Right: the door ---------- */}
-      <div className="flex items-center justify-center px-5 py-14">
+      {/* ---------- The form ---------- */}
+      <div className="relative -mt-6 flex justify-center rounded-t-[28px] bg-paper px-5 pb-16 pt-10 lg:mt-0 lg:items-center lg:rounded-none lg:py-16">
         <div className="rise w-full max-w-sm">
-          <Link to="/" className="mb-10 inline-block lg:hidden">
-            <Logo />
-          </Link>
-          <h1 className="display text-5xl">Sign in</h1>
+          <h2 className="display text-5xl">Sign in</h2>
+          <p className="mt-2 text-sm muted">The GCS Athletics site is for our school community. Pick how you’re connected to GCS.</p>
 
-          <div className="segmented mt-6 w-full">
+          <div className="segmented mt-6 flex w-full" role="tablist" aria-label="Account type">
             {(['student', 'parent'] as const).map((d) => (
-              <button
-                key={d}
-                type="button"
-                className="flex-1"
-                aria-pressed={door === d}
-                onClick={() => {
-                  setError(null)
-                  setParams(d === 'parent' ? { as: 'parent' } : {}, { replace: true })
-                }}
-              >
+              <button key={d} type="button" role="tab" aria-selected={door === d} className="flex-1 !py-2" aria-pressed={door === d} onClick={() => switchDoor(d)}>
                 {d === 'student' ? 'Student & staff' : 'Parent'}
               </button>
             ))}
           </div>
 
-          <div className="mt-6 space-y-4">
-            {!isConfigured && (
-              <Notice tone="error">
-                Supabase isn’t configured. Copy <code>.env.example</code> to <code>.env</code> and add the project URL and anon key.
-              </Notice>
-            )}
-            {(authError || error) && <Notice tone="error">{error ?? authError}</Notice>}
-          </div>
-
-          {door === 'student' ? (
-            <div className="mt-6">
-              <p className="text-sm muted">
-                Use your <b className="text-ink">@{SCHOOL_DOMAIN}</b> Google account. No roster needed — every GCS account works.
-              </p>
-              <button type="button" onClick={() => void google()} disabled={busy || !isConfigured} className="btn btn-ghost mt-6 w-full py-3 text-base">
-                <GoogleMark />
-                {busy ? 'Opening Google…' : 'Continue with school Google'}
-              </button>
-            </div>
-          ) : (
-            <div className="mt-6">
-              <ol className="mb-6 space-y-2 text-sm">
-                {['Sign in with any email address — we’ll email you a code.', 'Ask your child for a family code — they make one on their GCS account page.', 'Enter the family code. You’re verified.'].map((t, i) => (
-                  <li key={i} className="flex gap-3">
-                    <span className="grid size-6 shrink-0 place-items-center rounded-full bg-ink text-[11px] font-bold text-paper">{i + 1}</span>
-                    <span className="muted">{t}</span>
-                  </li>
-                ))}
-              </ol>
-
-              {/* No Google button here: the Google sign-in app is Internal to
-                  the school's Workspace, so personal accounts can't use it. */}
-
-              {!sent ? (
-                <form onSubmit={(e) => void send(e)} className="grid gap-3">
-                  <input
-                    type="email"
-                    required
-                    autoComplete="email"
-                    className="input"
-                    placeholder="you@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
-                  <button type="submit" className="btn btn-ink" disabled={busy || !isConfigured}>
-                    {busy ? 'Sending…' : 'Email me a sign-in code'}
-                  </button>
-                </form>
-              ) : (
-                <form onSubmit={(e) => void verify(e)} className="grid gap-3">
-                  <p className="text-sm muted">
-                    We sent a code to <b className="text-ink">{email}</b>. It can take a minute — check spam too.
-                  </p>
-                  <input
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    className="input num text-center text-2xl font-bold tracking-[0.4em]"
-                    placeholder="••••••"
-                    maxLength={10}
-                    value={code}
-                    onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-                    autoFocus
-                  />
-                  <button type="submit" className="btn btn-ink" disabled={busy || code.length < 6}>
-                    {busy ? 'Checking…' : 'Sign in'}
-                  </button>
-                  <button type="button" className="btn btn-quiet btn-sm" onClick={() => setSent(false)}>
-                    Use a different email
-                  </button>
-                </form>
-              )}
+          {(!isConfigured || shownError) && (
+            <div className="mt-5 space-y-3">
+              {!isConfigured && <Notice tone="error">This site isn’t connected to its database yet. If you run the site, check the Supabase settings.</Notice>}
+              {shownError && <Notice tone="error">{shownError}</Notice>}
             </div>
           )}
 
-          <p className="mt-10 text-center text-sm">
-            <Link to="/" className="font-semibold muted hover:text-ink">
-              ← Browse without signing in
-            </Link>
-          </p>
+          {door === 'student' ? (
+            <div className="mt-6">
+              <button type="button" onClick={() => void google()} disabled={busy || !isConfigured} className="btn btn-ghost w-full py-3.5 text-base shadow-[var(--shadow)]">
+                <GoogleMark />
+                {busy ? 'Opening Google…' : 'Continue with Google'}
+              </button>
+              <p className="mt-4 text-center text-xs muted">
+                Use your <b className="text-ink">@{SCHOOL_DOMAIN}</b> account.
+              </p>
+            </div>
+          ) : !sent ? (
+            <form onSubmit={(e) => void send(e)} className="mt-6 grid gap-3">
+              <label className="field">
+                <span className="label">Your email</span>
+                <input
+                  type="email"
+                  required
+                  autoComplete="email"
+                  inputMode="email"
+                  className="input py-3"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </label>
+              <button type="submit" className="btn btn-primary py-3 text-base" disabled={busy || !isConfigured || !email.includes('@')}>
+                {busy ? 'Sending…' : 'Email me a sign-in code'}
+              </button>
+              <p className="text-xs muted">
+                Any email works — Gmail, Naver, Daum. No password needed. New here? This creates your account; then link it to your child with a family code they make on their GCS page.
+              </p>
+            </form>
+          ) : (
+            <form onSubmit={(e) => void verify(e)} className="mt-6 grid gap-3">
+              <p className="text-sm muted">
+                We sent a code to <b className="text-ink">{email}</b>. It can take a minute — check spam too.
+              </p>
+              <input
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                className="input num py-3 text-center text-3xl font-bold tracking-[0.35em]"
+                placeholder="000000"
+                maxLength={10}
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+                aria-label="Sign-in code"
+                autoFocus
+              />
+              <button type="submit" className="btn btn-primary py-3 text-base" disabled={busy || code.length < 6}>
+                {busy ? 'Checking…' : 'Sign in'}
+              </button>
+              <div className="flex items-center justify-between text-sm">
+                <button type="button" className="font-semibold muted hover:text-ink" onClick={() => setSent(false)}>
+                  ← Different email
+                </button>
+                <button type="button" className="font-semibold text-signal disabled:text-[var(--ink-3)]" disabled={cooldown > 0 || busy} onClick={() => void send()}>
+                  {cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend code'}
+                </button>
+              </div>
+            </form>
+          )}
+
+          <p className="mt-12 border-t hairline pt-5 text-xs faint">Trouble signing in? Ask a Student Council AD.</p>
         </div>
       </div>
     </div>

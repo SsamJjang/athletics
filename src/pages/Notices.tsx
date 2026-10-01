@@ -126,7 +126,7 @@ export function NoticeDetail() {
   if (notice === null) {
     return (
       <EmptyState icon="🔒" title="Not available" action={<Link to="/notices" className="btn btn-ink">All notices</Link>}>
-        This notice doesn’t exist, or it’s only for the GCS community — try signing in.
+        This notice doesn’t exist, or it’s only for students, staff and verified parents.
       </EmptyState>
     )
   }

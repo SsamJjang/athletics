@@ -8,17 +8,13 @@ import AthleteForm from '../components/admin/AthleteForm'
 import { EmptyState, Markdown, PageHeader, Spinner, SportTag } from '../components/ui'
 
 function Gate() {
-  const { session, profile } = useAuth()
+  const { profile } = useAuth()
   return (
     <EmptyState
       icon="🔒"
       title="For the GCS community"
       action={
-        !session ? (
-          <Link to="/login" className="btn btn-ink">
-            Sign in
-          </Link>
-        ) : profile?.kind === 'parent' ? (
+        profile?.kind === 'parent' ? (
           <Link to="/family" className="btn btn-ink">
             Verify my parent account
           </Link>
@@ -39,12 +35,12 @@ function AthleteCard({ a }: { a: Athlete }) {
         {a.photo_url ? (
           <img src={a.photo_url} alt="" className="absolute inset-0 size-full object-cover transition duration-500 group-hover:scale-105" />
         ) : (
-          <div className="absolute inset-0" style={{ background: `linear-gradient(160deg, ${color}, #131311 75%)` }} />
+          <div className="absolute inset-0" style={{ background: `linear-gradient(160deg, ${color}, #1b1314 75%)` }} />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/10 to-transparent" />
         <div className="absolute left-0 top-5 h-1.5 w-16" style={{ background: color }} />
         {a.jersey && <span className="display absolute right-4 top-2 text-7xl text-white/85 drop-shadow-lg">{a.jersey}</span>}
-        {a.featured && <span className="tag absolute left-4 top-9 bg-volt text-[#131311]">★ Featured</span>}
+        {a.featured && <span className="tag absolute left-4 top-9 gold-fill">★ Featured</span>}
         <div className="absolute inset-x-0 bottom-0 p-5">
           <p className="text-[11px] font-bold uppercase tracking-widest text-white/60">
             {a.grade ? `Grade ${a.grade}` : ''}
@@ -178,7 +174,7 @@ export function AthleteDetail() {
             {a.photo_url ? (
               <img src={a.photo_url} alt={a.full_name} className="size-full object-cover" />
             ) : (
-              <div className="size-full" style={{ background: `linear-gradient(160deg, ${color}, #131311 80%)` }} />
+              <div className="size-full" style={{ background: `linear-gradient(160deg, ${color}, #1b1314 80%)` }} />
             )}
             {a.jersey && <span className="display absolute bottom-3 right-5 text-[8rem] leading-none text-white/90 drop-shadow-2xl">{a.jersey}</span>}
             <div className="absolute left-0 top-8 h-2 w-24" style={{ background: color }} />

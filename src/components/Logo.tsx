@@ -1,17 +1,24 @@
-/** Wordmark: a slanted "GCS" plate — like a jersey chest badge — then ATHLETICS. */
-export function Logo({ compact = false }: { compact?: boolean }) {
+/** The GCS crest beside the ATHLETICS wordmark. */
+export function Logo({ compact = false, size = 36, tone = 'auto' }: { compact?: boolean; size?: number; tone?: 'auto' | 'light' }) {
   return (
-    <span className="flex items-center gap-2.5 select-none">
-      <span
-        className="display grid h-8 place-items-center bg-ink px-2.5 text-[20px] text-paper"
-        style={{ clipPath: 'polygon(10% 0, 100% 0, 90% 100%, 0 100%)', paddingInline: 14 }}
-      >
-        <span className="relative">
-          GCS
-          <span className="absolute -bottom-[3px] left-0 right-0 h-[3px] bg-signal" aria-hidden />
+    <span className="flex select-none items-center gap-2.5">
+      <img
+        src="/crest.png"
+        alt={compact ? 'GCS' : ''}
+        width={Math.round(size * 0.927)}
+        height={size}
+        className="shrink-0 drop-shadow-sm"
+        style={{ height: size, width: 'auto' }}
+        decoding="async"
+      />
+      {!compact && (
+        <span className="flex flex-col leading-none">
+          <span className={`display text-[22px] tracking-wide ${tone === 'light' ? 'text-[#f6efe2]' : ''}`}>Athletics</span>
+          <span className={`mt-1 text-[9.5px] font-bold uppercase tracking-[0.16em] ${tone === 'light' ? 'text-[#f6efe2]/65' : 'faint'}`}>
+            Gaonnuri Christian School
+          </span>
         </span>
-      </span>
-      {!compact && <span className="display text-[22px] tracking-wide">Athletics</span>}
+      )}
     </span>
   )
 }

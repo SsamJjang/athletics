@@ -14,7 +14,7 @@ import { CloseIcon, KindTag, Markdown, SportTag, useToast } from './ui'
 export function Scoreline({ event }: { event: GEvent }) {
   if (!event.result && !event.outcome) return null
   const tone =
-    event.outcome === 'win' ? 'bg-volt text-[#131311]' : event.outcome === 'loss' ? 'bg-ink text-paper' : 'bg-surface-2'
+    event.outcome === 'win' ? 'gold-fill' : event.outcome === 'loss' ? 'bg-ink text-paper' : 'bg-surface-2'
   const word = event.outcome === 'win' ? 'W' : event.outcome === 'loss' ? 'L' : event.outcome === 'draw' ? 'D' : ''
   return (
     <span className={`tag num ${tone}`}>
@@ -177,11 +177,7 @@ export default function EventDrawer({
               )}
             </p>
             <div className="mt-4">
-              {!session ? (
-                <Link to="/login" className="btn btn-ink w-full">
-                  Sign in to sign up
-                </Link>
-              ) : profile?.kind === 'school' ? (
+              {profile?.kind === 'school' ? (
                 mine ? (
                   <button type="button" className="btn btn-ghost w-full" disabled={busy} onClick={() => void toggleSignup()}>
                     ✓ You’re in — withdraw

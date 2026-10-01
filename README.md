@@ -10,7 +10,7 @@ Vite + React + TypeScript + Tailwind v4, Supabase for auth and data, hosted on *
 
 | Account | How they sign in | What they see |
 |---|---|---|
-| Logged-out visitor | — | Calendar (public events), sports, public notices |
+| Logged-out visitor | — | Only the sign-in page. Nothing else loads, and the database refuses reads without a session. |
 | **Student / staff** | Google, `@gcssongdo.co.kr` only | Everything, plus sign-ups, following teams, and issuing family codes |
 | **Parent (unverified)** | A code emailed to any address (no Google — see below) | Same as a visitor, plus the "enter family code" screen |
 | **Parent (verified)** | Same | Everything a student sees, plus their child's sign-ups |

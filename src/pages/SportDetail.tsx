@@ -13,7 +13,7 @@ import { EventRow } from './Calendar'
 
 export default function SportDetail() {
   const { slug } = useParams()
-  const { session, access } = useAuth()
+  const { access } = useAuth()
   const { sports, sportsLoading, follows, toggleFollow, reloadSports } = useData()
   const navigate = useNavigate()
   const toast = useToast()
@@ -96,28 +96,22 @@ export default function SportDetail() {
         <div className="relative p-7 sm:p-12">
           <div className="flex flex-wrap gap-2">
             <span className="tag bg-black/40 text-white">{season.label} · {season.months}</span>
-            {sport.tier === 'opportunity' && <span className="tag bg-volt text-[#131311]">Opportunity</span>}
+            {sport.tier === 'opportunity' && <span className="tag gold-fill">Opportunity</span>}
             {!sport.active && <span className="tag bg-white text-black">Hidden</span>}
           </div>
           <h1 className="display mt-4 max-w-2xl text-[clamp(3.5rem,9vw,7rem)] leading-[0.85]">{sport.name}</h1>
           {sport.summary && <p className="mt-4 max-w-lg text-lg text-white/85">{sport.summary}</p>}
           <div className="mt-7 flex flex-wrap gap-2">
-            {session ? (
-              <button
-                type="button"
-                className={`btn ${following ? 'bg-white text-black' : 'bg-black/50 text-white backdrop-blur hover:bg-black/70'}`}
-                onClick={() => {
-                  void toggleFollow(sport.id)
-                  toast(following ? `Unfollowed ${sport.name}` : `Following ${sport.name} — use “My teams” on the calendar`)
-                }}
-              >
-                {following ? '★ Following' : '☆ Follow'}
-              </button>
-            ) : (
-              <Link to="/login" className="btn bg-black/50 text-white backdrop-blur">
-                Sign in to follow
-              </Link>
-            )}
+            <button
+              type="button"
+              className={`btn ${following ? 'bg-white text-black' : 'bg-black/50 text-white backdrop-blur hover:bg-black/70'}`}
+              onClick={() => {
+                void toggleFollow(sport.id)
+                toast(following ? `Unfollowed ${sport.name}` : `Following ${sport.name} — use “My teams” on the calendar`)
+              }}
+            >
+              {following ? '★ Following' : '☆ Follow'}
+            </button>
             {access.is_admin && (
               <button type="button" className="btn bg-white/90 text-black" onClick={() => setEditing(true)}>
                 Edit sport

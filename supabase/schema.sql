@@ -424,7 +424,8 @@ with (security_invoker = off) as
   select event_id, count(*)::int as total
     from public.event_signups
    group by event_id;
-grant select on public.event_signup_totals to anon, authenticated;
+revoke select on public.event_signup_totals from anon;
+grant select on public.event_signup_totals to authenticated;
 
 create or replace function public.can_sign_up(p_event uuid)
 returns boolean language sql stable security definer set search_path = public as $fn$
@@ -551,18 +552,21 @@ create policy links_delete on public.parent_links for delete to authenticated
 -- parent_redeem_attempts: no policies — only the SECURITY DEFINER
 -- function touches it.
 
--- sports: public.
+-- Nothing is readable without signing in: every read policy below is
+-- `to authenticated`, so the anon key alone returns empty results.
+
+-- sports: any signed-in account.
 drop policy if exists sports_read on public.sports;
-create policy sports_read on public.sports for select to anon, authenticated
+create policy sports_read on public.sports for select to authenticated
   using (active or public.is_admin());
 
 drop policy if exists sports_admin on public.sports;
 create policy sports_admin on public.sports for all to authenticated
   using (public.is_admin()) with check (public.is_admin());
 
--- events: public unless members_only.
+-- events: any signed-in account, unless members_only (community only).
 drop policy if exists events_read on public.events;
-create policy events_read on public.events for select to anon, authenticated
+create policy events_read on public.events for select to authenticated
   using (not members_only or public.is_community());
 
 drop policy if exists events_admin on public.events;
@@ -583,9 +587,9 @@ drop policy if exists signups_delete on public.event_signups;
 create policy signups_delete on public.event_signups for delete to authenticated
   using (user_id = auth.uid() or public.is_admin());
 
--- notices: public unless members_only; drafts are admin-only.
+-- notices: any signed-in account unless members_only; drafts are admin-only.
 drop policy if exists notices_read on public.notices;
-create policy notices_read on public.notices for select to anon, authenticated
+create policy notices_read on public.notices for select to authenticated
   using ((published and (not members_only or public.is_community())) or public.is_admin());
 
 drop policy if exists notices_admin on public.notices;

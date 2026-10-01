@@ -224,7 +224,7 @@ export default function Calendar() {
             <input
               ref={searchRef}
               className="input !rounded-full !py-2 pl-9 text-sm"
-              placeholder="Search events   /"
+              placeholder="Search events"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               aria-label="Search events"
@@ -291,7 +291,21 @@ export default function Calendar() {
       <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className={`min-w-0 transition-opacity ${loading ? 'opacity-60' : ''}`}>
           {view === 'month' && (
-            <MonthView grid={grid} anchor={selected} today={today} selected={selected} byDay={byDay} onSelect={select} onOpen={(e) => patch({ event: e.id })} />
+            <MonthView
+              grid={grid}
+              anchor={selected}
+              today={today}
+              selected={selected}
+              byDay={byDay}
+              onSelect={(d) => {
+                select(d)
+                // Phones and tablets: the day's list sits below the grid, so bring it into view.
+                if (window.innerWidth < 1024) {
+                  requestAnimationFrame(() => document.getElementById('day-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+                }
+              }}
+              onOpen={(e) => patch({ event: e.id })}
+            />
           )}
           {view === 'week' && <WeekView days={weekDays(selected)} today={today} byDay={byDay} onOpen={(e) => patch({ event: e.id })} onSelect={select} />}
           {view === 'list' && <ListView anchor={selected} today={today} events={filtered} onOpen={(e) => patch({ event: e.id })} />}
@@ -412,7 +426,7 @@ function MonthView({
               key={idx}
               role="gridcell"
               aria-selected={isSel}
-              aria-label={`${fmtDayLong(day)}, ${list.length} events`}
+              aria-label={`${fmtDayLong(day)}, ${list.length} ${list.length === 1 ? 'event' : 'events'}`}
               className={`cal-cell ${outside ? 'outside' : ''} ${isToday ? 'today' : ''} ${isSel ? 'selected' : ''} ${idx >= 35 ? '!border-b-0' : ''} max-sm:!min-h-[64px]`}
               onClick={() => onSelect(day)}
             >
@@ -580,7 +594,7 @@ export function EventRow({ event: e, onOpen, showDate = false }: { event: GEvent
 
 function DayPanel({ day, events, onOpen }: { day: Date; events: GEvent[]; onOpen: (e: GEvent) => void }) {
   return (
-    <section className="card p-5">
+    <section id="day-panel" className="card scroll-mt-24 p-5">
       <p className="eyebrow">{sameDay(day, new Date()) ? 'Today' : relative(day) === 'tomorrow' ? 'Tomorrow' : fmtWeekday(day)}</p>
       <h2 className="display mt-1 text-3xl">{day.toLocaleString('en-US', { month: 'long', day: 'numeric' })}</h2>
       <div className="mt-4 divide-y divide-[var(--line)]">
@@ -626,7 +640,7 @@ function Deadlines({ onOpen }: { onOpen: (e: GEvent) => void }) {
                       <span className="block font-semibold leading-snug group-hover:text-signal">{e.title}</span>
                       <span className="block text-xs muted">
                         {sport ? `${sport.emoji} ${sport.name} · ` : ''}
-                        {at.toLocaleString('en-US', { month: 'short', day: 'numeric' })} {fmtTime(at)}
+                        {e.kind === 'deadline' ? 'Due' : 'Sign-ups close'} {at.toLocaleString('en-US', { month: 'short', day: 'numeric' })}, {fmtTime(at)}
                       </span>
                     </span>
                   </button>

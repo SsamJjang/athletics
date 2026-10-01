@@ -12,10 +12,12 @@ interface AuthValue {
   profile: Profile | null
   access: Access
   loading: boolean
+  /** Session known AND, if signed in, the profile has finished loading. */
+  ready: boolean
   authError: string | null
   clearAuthError: () => void
-  signInWithGoogle: (door: Door) => Promise<void>
-  sendEmailCode: (email: string) => Promise<string | null>
+  signInWithGoogle: (door: Door, next?: string) => Promise<void>
+  sendEmailCode: (email: string, next?: string) => Promise<string | null>
   verifyEmailCode: (email: string, code: string) => Promise<string | null>
   signOut: () => Promise<void>
   refresh: () => Promise<void>
@@ -40,6 +42,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [access, setAccess] = useState<Access>(NO_ACCESS)
   const [loading, setLoading] = useState(true)
+  // Which user id the last finished profile load was for ('' = signed out).
+  const [loadedFor, setLoadedFor] = useState<string | null>(null)
   const [authError, setAuthError] = useState<string | null>(null)
   const alive = useRef(true)
 
@@ -59,6 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!userId) {
       setProfile(null)
       setAccess(NO_ACCESS)
+      setLoadedFor('')
       return
     }
     const [p, a] = await Promise.all([
@@ -82,11 +87,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       )
       setProfile(null)
       setAccess(NO_ACCESS)
+      setLoadedFor('')
       return
     }
 
     setProfile(prof)
     setAccess(acc)
+    setLoadedFor(userId)
   }, [])
 
   useEffect(() => {
@@ -112,13 +119,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => sub.subscription.unsubscribe()
   }, [load])
 
-  const signInWithGoogle = useCallback(async (door: Door) => {
+  const signInWithGoogle = useCallback(async (door: Door, next?: string) => {
     setAuthError(null)
     sessionStorage.setItem(DOOR_KEY, door)
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: redirectUrl(door === 'parent' ? '/family' : '/'),
+        redirectTo: redirectUrl(next ?? '/'),
         // `hd` only pre-filters Google's account picker. The real check is
         // the domain test in the database.
         queryParams:
@@ -128,12 +135,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) setAuthError(error.message)
   }, [])
 
-  const sendEmailCode = useCallback(async (email: string) => {
+  const sendEmailCode = useCallback(async (email: string, next?: string) => {
     setAuthError(null)
     sessionStorage.setItem(DOOR_KEY, 'parent')
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
-      options: { shouldCreateUser: true, emailRedirectTo: redirectUrl('/family') },
+      options: { shouldCreateUser: true, emailRedirectTo: redirectUrl(next ?? '/family') },
     })
     return error ? error.message : null
   }, [])
@@ -160,6 +167,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       profile,
       access,
       loading,
+      ready: !loading && (session ? loadedFor === session.user.id : true),
       authError,
       clearAuthError: () => setAuthError(null),
       signInWithGoogle,
@@ -168,7 +176,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut,
       refresh,
     }),
-    [session, profile, access, loading, authError, signInWithGoogle, sendEmailCode, verifyEmailCode, signOut, refresh],
+    [session, profile, access, loading, loadedFor, authError, signInWithGoogle, sendEmailCode, verifyEmailCode, signOut, refresh],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

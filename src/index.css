@@ -3,43 +3,47 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ---------------------------------------------------------------------
-   Tokens. Light is warm chalk and ink; dark is a night stadium. The
-   vermilion "signal" is the brand; volt marks what's live or next.
+   Tokens, taken from the GCS crest: crimson and gold on warm cream.
+   --signal is the crest crimson (buttons, links, accents); --volt is the
+   crest gold (today, next up, wins, highlights). Dark mode lifts the
+   crimson so it stays readable on near-black.
    --------------------------------------------------------------------- */
 :root {
-  --paper: #f2efe7;
-  --surface: #fbfaf6;
-  --surface-2: #e8e4d9;
-  --ink: #131311;
-  --ink-2: #5b5a54;
-  --ink-3: #8b897f;
-  --line: rgb(19 19 17 / 0.12);
-  --line-strong: rgb(19 19 17 / 0.24);
-  --signal: #e4462b;
+  --paper: #f6f1e6;
+  --surface: #fffdf8;
+  --surface-2: #ede5d4;
+  --ink: #1b1314;
+  --ink-2: #5f5551;
+  --ink-3: #93887f;
+  --line: rgb(27 19 20 / 0.12);
+  --line-strong: rgb(27 19 20 / 0.24);
+  --signal: #8a1c22;
   --signal-ink: #ffffff;
-  --signal-soft: rgb(228 70 43 / 0.12);
-  --volt: #c6ef3c;
-  --volt-ink: #131311;
+  --signal-soft: rgb(138 28 34 / 0.1);
+  --volt: #d9b56c;
+  --volt-ink: #2b1b0c;
+  --gold: linear-gradient(135deg, #f7e4a6 0%, #dcbb76 50%, #c39a56 100%);
+  --crimson-deep: #5c1116;
   --fall: #d9731a;
   --winter: #2f73d6;
   --spring: #2a9a55;
   --year: #7c5ce0;
-  --shadow: 0 1px 0 rgb(19 19 17 / 0.04), 0 8px 24px -12px rgb(19 19 17 / 0.18);
-  --shadow-lg: 0 24px 60px -20px rgb(19 19 17 / 0.35);
+  --shadow: 0 1px 0 rgb(27 19 20 / 0.04), 0 8px 24px -12px rgb(60 20 22 / 0.2);
+  --shadow-lg: 0 24px 60px -20px rgb(60 20 22 / 0.4);
   color-scheme: light;
 }
 
 .dark {
-  --paper: #0d0e0c;
-  --surface: #161714;
-  --surface-2: #20211d;
-  --ink: #f1efe7;
-  --ink-2: #aeaca2;
-  --ink-3: #78766d;
-  --line: rgb(241 239 231 / 0.1);
-  --line-strong: rgb(241 239 231 / 0.22);
-  --signal: #ff5a3c;
-  --signal-soft: rgb(255 90 60 / 0.16);
+  --paper: #110c0d;
+  --surface: #1b1516;
+  --surface-2: #261e1f;
+  --ink: #f4ede2;
+  --ink-2: #b4a9a0;
+  --ink-3: #7f746d;
+  --line: rgb(244 237 226 / 0.1);
+  --line-strong: rgb(244 237 226 / 0.22);
+  --signal: #e2535b;
+  --signal-soft: rgb(226 83 91 / 0.16);
   --shadow: 0 1px 0 rgb(0 0 0 / 0.3), 0 8px 24px -12px rgb(0 0 0 / 0.6);
   --shadow-lg: 0 24px 60px -20px rgb(0 0 0 / 0.8);
   color-scheme: dark;
@@ -57,6 +61,8 @@
   --color-line: var(--line);
   --color-signal: var(--signal);
   --color-volt: var(--volt);
+  --color-crimson: #861b20;
+  --color-crimson-deep: var(--crimson-deep);
 }
 
 html {
@@ -83,6 +89,30 @@ body {
 :focus-visible {
   outline: 2px solid var(--signal);
   outline-offset: 2px;
+}
+
+/* Crest gold as text or fill. */
+.gold-text {
+  background: var(--gold);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.gold-fill {
+  background: var(--gold);
+  color: var(--volt-ink);
+}
+
+/* The crimson "stage" used for the hero and the sign-in poster: always
+   crimson with cream text, in both themes. */
+.crimson-stage {
+  --ink: #1b1314;
+  --paper: #f6efe2;
+  background:
+    radial-gradient(120% 90% at 0% 0%, rgb(255 255 255 / 0.08), transparent 55%),
+    linear-gradient(160deg, #861b20 0%, #6a1419 55%, #4e0e12 100%);
+  color: #f6efe2;
 }
 
 /* Unlayered on purpose: headline leading stays tight even next to a
@@ -203,8 +233,12 @@ body {
   }
 
   .btn-volt {
-    background: var(--volt);
+    background: var(--gold);
     color: var(--volt-ink);
+  }
+
+  .btn-volt:hover:not(:disabled) {
+    filter: brightness(1.06);
   }
 
   .btn-ghost {
@@ -450,6 +484,7 @@ body {
   }
 
   .cal-daynum {
+    align-self: flex-start;
     display: inline-grid;
     place-items: center;
     min-width: 26px;

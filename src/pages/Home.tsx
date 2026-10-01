@@ -13,7 +13,7 @@ import { SportCard } from './Sports'
 import { Notice as Banner } from '../components/ui'
 
 export default function Home() {
-  const { session, profile, access } = useAuth()
+  const { profile, access } = useAuth()
   const { sports, sportById } = useData()
   const navigate = useNavigate()
   const [upcoming, setUpcoming] = useState<GEvent[]>([])
@@ -76,25 +76,25 @@ export default function Home() {
       )}
 
       {/* ---------------- Hero ---------------- */}
-      <section className="stage rise relative overflow-hidden rounded-[28px] bg-ink text-paper">
-        <div className="pointer-events-none absolute inset-0 opacity-[0.07]" style={{ backgroundImage: 'repeating-linear-gradient(90deg, #fff 0 1px, transparent 1px 96px)' }} aria-hidden />
-        <div className="pointer-events-none absolute -right-24 top-0 hidden h-full w-2/3 -skew-x-12 bg-signal/90 lg:block" aria-hidden />
-        <div className="pointer-events-none absolute -right-8 top-0 hidden h-full w-24 -skew-x-12 bg-volt lg:block" aria-hidden />
-        {/* Narrow screens: the bands would sit behind the headline, so they become a kit stripe instead. */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 flex h-2.5 lg:hidden" aria-hidden>
-          <span className="flex-[3] bg-signal" />
-          <span className="flex-1 bg-volt" />
-        </div>
+      <section className="crimson-stage rise relative overflow-hidden rounded-[28px]">
+        {/* The crest, oversized and faint, as a watermark. */}
+        <img src="/crest.png" alt="" className="pointer-events-none absolute -right-16 -top-10 hidden h-[130%] w-auto opacity-[0.09] mix-blend-luminosity lg:block" aria-hidden />
+        {/* Gold sash across the corner; on phones it would sit behind the headline, so it becomes a stripe. */}
+        <div className="pointer-events-none absolute -right-10 top-0 hidden h-full w-20 -skew-x-12 lg:block" style={{ background: 'var(--gold)' }} aria-hidden />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2 lg:hidden" style={{ background: 'var(--gold)' }} aria-hidden />
 
-        <div className="relative grid gap-10 p-7 sm:p-12 lg:grid-cols-[1.2fr_1fr] lg:items-end">
+        <div className="relative grid gap-10 p-7 sm:p-12 lg:grid-cols-[1.2fr_1fr] lg:items-end lg:pr-28">
           <div>
-            <p className="eyebrow !text-paper/60">Gaonnuri Christian School · {seasonOf(season).label} season</p>
+            <p className="eyebrow !text-[#f6efe2]/70">
+              <span className="hidden sm:inline">Gaonnuri Christian School · </span>
+              {seasonOf(season).label} season
+            </p>
             <h1 className="display mt-4 text-[clamp(3.6rem,10vw,8.5rem)] leading-[0.85]">
               Play
               <br />
-              for <span className="text-volt">GCS.</span>
+              for <span className="gold-text">GCS.</span>
             </h1>
-            <p className="mt-6 max-w-md text-paper/70">
+            <p className="mt-6 max-w-md text-paper/75">
               Every game, tryout and sign-up deadline in one place — plus every sport you can play here, and a few you might not know about.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
@@ -200,7 +200,7 @@ export default function Home() {
           <SectionTitle eyebrow={seasonOf(season).months} title={`In season: ${seasonOf(season).label}`} link={{ to: '/sports', label: 'Every sport' }} />
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {inSeason.slice(0, 6).map((s) => (
-              <SportCard key={s.id} sport={s} />
+              <SportCard key={s.id} sport={s} showSeason={false} />
             ))}
           </div>
         </section>
@@ -211,11 +211,14 @@ export default function Home() {
         <SectionTitle eyebrow="Spotlight" title="Meet our athletes" link={{ to: '/athletes', label: 'All athletes' }} />
         {spotlight ? (
           <Link to={`/athletes/${spotlight.id}`} className="card group grid overflow-hidden sm:grid-cols-[280px_1fr]">
-            <div className="relative aspect-[4/5] bg-surface-2 sm:aspect-auto">
+            <div className={`relative bg-surface-2 sm:aspect-auto ${spotlight.photo_url ? 'aspect-[4/5]' : 'aspect-[16/7]'}`}>
               {spotlight.photo_url ? (
                 <img src={spotlight.photo_url} alt="" className="absolute inset-0 size-full object-cover transition duration-500 group-hover:scale-[1.03]" />
               ) : (
-                <div className="display absolute inset-0 grid place-items-center text-8xl text-ink/15">{spotlight.jersey || '★'}</div>
+                <div className="crimson-stage absolute inset-0 grid place-items-center">
+                  <img src="/crest.png" alt="" className="absolute -right-6 -top-4 h-[120%] w-auto opacity-10" aria-hidden />
+                  <span className="display gold-text relative text-7xl">{initials(spotlight.full_name)}</span>
+                </div>
               )}
             </div>
             <div className="relative flex flex-col justify-center p-7 sm:p-10">
@@ -236,9 +239,9 @@ export default function Home() {
                   : 'Athlete profiles are visible to GCS students and verified parents.'}
               </p>
             </div>
-            {!session && (
-              <Link to="/login" className="btn btn-ink">
-                Sign in
+            {profile?.kind === 'parent' && !access.is_community && (
+              <Link to="/family" className="btn btn-ink">
+                Verify my account
               </Link>
             )}
           </div>
@@ -246,6 +249,15 @@ export default function Home() {
       </section>
     </div>
   )
+}
+
+function initials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase())
+    .join('')
 }
 
 function SectionTitle({ eyebrow, title, link }: { eyebrow: string; title: string; link?: { to: string; label: string } }) {
@@ -275,7 +287,7 @@ function NextUp({ event, onOpen }: { event: GEvent | undefined; onOpen: (e: GEve
 
   if (!event) {
     return (
-      <div className="rounded-2xl border border-paper/15 bg-black/40 p-6 backdrop-blur">
+      <div className="rounded-2xl border border-[#f7e4a6]/25 bg-black/30 p-6 backdrop-blur">
         <p className="eyebrow !text-paper/60">Next up</p>
         <p className="display mt-3 text-4xl">Schedule coming soon</p>
         <p className="mt-2 text-sm text-paper/60">Games appear here as the ADs add them.</p>
@@ -294,7 +306,7 @@ function NextUp({ event, onOpen }: { event: GEvent | undefined; onOpen: (e: GEve
   ] as const
 
   return (
-    <button type="button" onClick={() => onOpen(event)} className="group rounded-2xl border border-paper/15 bg-black/55 p-6 text-left backdrop-blur transition hover:border-volt">
+    <button type="button" onClick={() => onOpen(event)} className="group rounded-2xl border border-[#f7e4a6]/25 bg-black/35 p-6 text-left backdrop-blur transition hover:border-volt">
       <div className="flex items-center justify-between">
         <p className="eyebrow !text-paper/60">{live ? 'Happening now' : 'Next up'}</p>
         {live && <span className="size-2.5 animate-pulse rounded-full bg-volt" />}
@@ -357,7 +369,7 @@ function DeadlineList({ events, onOpen }: { events: GEvent[]; onOpen: (e: GEvent
                 <p className="font-semibold leading-snug group-hover:text-signal">{e.title}</p>
                 <p className="text-xs muted">
                   {s ? `${s.emoji} ${s.name} · ` : ''}
-                  {kindOf(e.kind).label} · {relative(at)}
+                  {e.kind === 'deadline' ? 'Due' : e.signup_enabled ? 'Sign-ups close' : kindOf(e.kind).label} {relative(at)}
                 </p>
               </div>
             </button>

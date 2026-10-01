@@ -25,10 +25,10 @@ export function currentSeason(date = new Date()): Season {
 }
 
 export const EVENT_KINDS: { id: EventKind; label: string; color: string; icon: string }[] = [
-  { id: 'game', label: 'Game', color: '#e4462b', icon: '●' },
-  { id: 'tournament', label: 'Tournament', color: '#d99a0b', icon: '◆' },
+  { id: 'game', label: 'Game', color: '#b4232b', icon: '●' },
+  { id: 'tournament', label: 'Tournament', color: '#c08a2a', icon: '◆' },
   { id: 'tryout', label: 'Tryout', color: '#7c5ce0', icon: '▲' },
-  { id: 'deadline', label: 'Sign-up deadline', color: '#e0336f', icon: '⏱' },
+  { id: 'deadline', label: 'Deadline', color: '#e0336f', icon: '⏱' },
   { id: 'practice', label: 'Practice', color: '#6b7280', icon: '■' },
   { id: 'meeting', label: 'Meeting', color: '#0f9488', icon: '◇' },
   { id: 'other', label: 'Other', color: '#64748b', icon: '○' },

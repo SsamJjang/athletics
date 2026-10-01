@@ -3,6 +3,7 @@ import { BrowserRouter, Link, Route, Routes, useLocation, useNavigate } from 're
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { DataProvider } from './context/DataContext'
 import Layout from './components/Layout'
+import RequireAuth from './components/RequireAuth'
 import { EmptyState, ToastProvider } from './components/ui'
 import Home from './pages/Home'
 import Calendar from './pages/Calendar'
@@ -35,7 +36,13 @@ export default function App() {
             <AuthErrorRedirect />
             <Routes>
               <Route path="/login" element={<Login />} />
-              <Route element={<Layout />}>
+              <Route
+                element={
+                  <RequireAuth>
+                    <Layout />
+                  </RequireAuth>
+                }
+              >
                 <Route index element={<Home />} />
                 <Route path="calendar" element={<Calendar />} />
                 <Route path="sports" element={<Sports />} />

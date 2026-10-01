@@ -327,7 +327,7 @@ export default function EventForm({
         <div className="flex flex-wrap gap-x-6 gap-y-3">
           <label className="check">
             <input type="checkbox" checked={d.members_only} onChange={(e) => set('members_only', e.target.checked)} />
-            Members only <span className="text-xs faint">(hidden from logged-out visitors)</span>
+            Members only <span className="text-xs faint">(hidden from unverified parent accounts)</span>
           </label>
           {event && (
             <label className="check">

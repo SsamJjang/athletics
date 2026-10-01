@@ -7,7 +7,7 @@ import type { Season, Sport } from '../lib/types'
 import SportForm from '../components/admin/SportForm'
 import { EmptyState, PageHeader, SeasonTag, Spinner } from '../components/ui'
 
-export function SportCard({ sport, big = false }: { sport: Sport; big?: boolean }) {
+export function SportCard({ sport, big = false, showSeason = true }: { sport: Sport; big?: boolean; showSeason?: boolean }) {
   const { follows } = useData()
   return (
     <Link
@@ -26,8 +26,8 @@ export function SportCard({ sport, big = false }: { sport: Sport; big?: boolean 
           </>
         )}
         <div className="absolute left-3 top-3 flex gap-1.5">
-          <span className="tag bg-black/55 text-white backdrop-blur">{SEASONS.find((s) => s.id === sport.season)?.label}</span>
-          {follows.has(sport.id) && <span className="tag bg-volt text-[#131311]">★ Following</span>}
+          {showSeason && <span className="tag bg-black/55 text-white backdrop-blur">{SEASONS.find((s) => s.id === sport.season)?.label}</span>}
+          {follows.has(sport.id) && <span className="tag gold-fill">★ Following</span>}
         </div>
       </div>
       <div className="flex flex-1 flex-col p-5">
@@ -98,7 +98,7 @@ export default function Sports() {
                     <h2 className="display text-4xl">{s.label}</h2>
                     <p className="text-xs font-semibold muted">{s.months}</p>
                   </div>
-                  {s.id === now && <span className="tag bg-volt text-[#131311]">In season</span>}
+                  {s.id === now && <span className="tag gold-fill">In season</span>}
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {list.map((t) => (
@@ -111,7 +111,6 @@ export default function Sports() {
 
           {opportunities.length > 0 && (season === 'all' || opportunities.some((o) => o.season === season)) && (
             <section className="stage relative overflow-hidden rounded-[28px] bg-ink p-6 text-paper sm:p-10">
-              <div className="pointer-events-none absolute inset-0 opacity-[0.06]" style={{ backgroundImage: 'repeating-linear-gradient(0deg, #fff 0 1px, transparent 1px 40px)' }} aria-hidden />
               <div className="relative">
                 <p className="eyebrow !text-volt">Beyond the big teams</p>
                 <h2 className="display mt-2 text-5xl">Opportunities</h2>

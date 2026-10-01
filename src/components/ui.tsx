@@ -160,6 +160,8 @@ export function Drawer({ onClose, label, children }: { onClose: () => void; labe
     <>
       <div className="scrim" onClick={onClose} aria-hidden />
       <aside className="drawer" role="dialog" aria-modal="true" aria-label={label}>
+        {/* Bottom-sheet grabber on phones. */}
+        <span className="pointer-events-none absolute left-1/2 top-2 z-10 h-1 w-10 -translate-x-1/2 rounded-full bg-[var(--line-strong)] sm:hidden" aria-hidden />
         {children}
       </aside>
     </>,
