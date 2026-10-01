@@ -67,7 +67,15 @@ export interface GEvent {
   result: string | null
   outcome: Outcome | null
   members_only: boolean
+  /** Visible only to this sport's roster, their verified parents and admins. */
+  team_only: boolean
   cancelled: boolean
+  created_at: string
+}
+
+export interface TeamMember {
+  sport_id: string
+  email: string
   created_at: string
 }
 

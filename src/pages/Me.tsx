@@ -186,7 +186,7 @@ function FamilyCodes() {
 
 export default function Me() {
   const { session, profile, loading } = useAuth()
-  const { sports, follows, toggleFollow } = useData()
+  const { sports, follows, toggleFollow, myTeams } = useData()
   const navigate = useNavigate()
   const [mine, setMine] = useState<GEvent[] | null>(null)
 
@@ -232,8 +232,23 @@ export default function Me() {
         </section>
 
         <section className="card p-6">
-          <p className="eyebrow">Teams I follow</p>
-          <p className="mt-1 text-sm muted">Followed sports power the “My teams” filter on the calendar.</p>
+          {myTeams.size > 0 && (
+            <div className="mb-6">
+              <p className="eyebrow">Teams I’m on</p>
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {sports
+                  .filter((s) => myTeams.has(s.id))
+                  .map((s) => (
+                    <span key={s.id} className="chip" style={{ background: s.color, borderColor: s.color, color: '#fff' }}>
+                      🔒 {s.emoji} {s.name}
+                    </span>
+                  ))}
+              </div>
+              <p className="mt-2 text-xs muted">You see these teams’ private practices and meetings. Rosters are kept by the StuCo ADs — tell one if this is wrong.</p>
+            </div>
+          )}
+          <p className="eyebrow">Sports I follow</p>
+          <p className="mt-1 text-sm muted">Followed sports are grouped at the top of the calendar’s sidebar.</p>
           <div className="mt-4 flex flex-wrap gap-1.5">
             {sports.map((s) => (
               <button

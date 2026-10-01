@@ -7,7 +7,7 @@ import { useAuth } from './AuthContext'
 /**
  * Sports are tiny and referenced on every page (colors, names, filters),
  * so they're loaded once and shared. Follows ride along because the
- * calendar's "My teams" filter needs them everywhere too.
+ * calendar sidebar groups by them.
  */
 interface DataValue {
   sports: Sport[]
@@ -16,15 +16,19 @@ interface DataValue {
   reloadSports: () => Promise<void>
   follows: Set<string>
   toggleFollow: (sportId: string) => Promise<void>
+  /** Sports whose roster I'm on (or, for a parent, my children are on). */
+  myTeams: Set<string>
+  reloadTeams: () => Promise<void>
 }
 
 const DataContext = createContext<DataValue | null>(null)
 
 export function DataProvider({ children }: { children: ReactNode }) {
-  const { session, access } = useAuth()
+  const { session, access, profile } = useAuth()
   const [sports, setSports] = useState<Sport[]>([])
   const [sportsLoading, setSportsLoading] = useState(true)
   const [follows, setFollows] = useState<Set<string>>(new Set())
+  const [myTeams, setMyTeams] = useState<Set<string>>(new Set())
   const userId = session?.user.id ?? null
 
   const reloadSports = useCallback(async () => {
@@ -37,10 +41,28 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setSportsLoading(false)
   }, [])
 
-  // Admins also see inactive sports, so reload when access changes.
+  // Everything requires a session, and admins also see inactive sports:
+  // reload on sign-in, sign-out and access changes.
   useEffect(() => {
     void reloadSports()
-  }, [reloadSports, access.is_admin])
+  }, [reloadSports, userId, access.is_admin])
+
+  const reloadTeams = useCallback(async () => {
+    if (!userId || !profile) {
+      setMyTeams(new Set())
+      return
+    }
+    // RLS returns my rows and my children's; admins can read every roster,
+    // so narrow to their own email.
+    let q = supabase.from('team_members').select('sport_id')
+    if (access.is_admin) q = q.eq('email', profile.email)
+    const { data } = await q
+    setMyTeams(new Set((data ?? []).map((r) => r.sport_id as string)))
+  }, [userId, profile, access.is_admin])
+
+  useEffect(() => {
+    void reloadTeams()
+  }, [reloadTeams])
 
   useEffect(() => {
     if (!userId) {
@@ -83,8 +105,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const sportById = useMemo(() => new Map(sports.map((s) => [s.id, s])), [sports])
 
   const value = useMemo(
-    () => ({ sports, sportById, sportsLoading, reloadSports, follows, toggleFollow }),
-    [sports, sportById, sportsLoading, reloadSports, follows, toggleFollow],
+    () => ({ sports, sportById, sportsLoading, reloadSports, follows, toggleFollow, myTeams, reloadTeams }),
+    [sports, sportById, sportsLoading, reloadSports, follows, toggleFollow, myTeams, reloadTeams],
   )
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>
 }

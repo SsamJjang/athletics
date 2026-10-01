@@ -427,6 +427,51 @@ with (security_invoker = off) as
 revoke select on public.event_signup_totals from anon;
 grant select on public.event_signup_totals to authenticated;
 
+-- ---------------------------------------------------------------------
+-- 5b. Team rosters and team-only events.
+--
+--    Big events (games, tryouts, deadlines) are for everyone. A team's own
+--    practices and meetings are marked team_only and are visible only to
+--    that sport's roster, their verified parents, and admins.
+--
+--    Rosters are kept by email, so an admin can add a student before
+--    they have ever signed in.
+-- ---------------------------------------------------------------------
+create table if not exists public.team_members (
+  sport_id    uuid not null references public.sports(id) on delete cascade,
+  email       text not null check (email = lower(email) and email like '%_@_%'),
+  created_at  timestamptz not null default now(),
+  primary key (sport_id, email)
+);
+create index if not exists team_members_email_idx on public.team_members (email);
+
+alter table public.events add column if not exists team_only boolean not null default false;
+
+-- On this team, or the verified parent of someone who is.
+create or replace function public.is_on_team(p_sport uuid)
+returns boolean language sql stable security definer set search_path = public as $fn$
+  select exists (
+           select 1 from public.team_members
+            where sport_id = p_sport and email = public.jwt_email()
+         )
+      or exists (
+           select 1
+             from public.parent_links pl
+             join public.profiles child on child.id = pl.student_id
+             join public.team_members tm on tm.email = child.email
+            where pl.parent_id = auth.uid() and tm.sport_id = p_sport
+         )
+$fn$;
+
+create or replace function public.can_see_event(p_members_only boolean, p_team_only boolean, p_sport uuid)
+returns boolean language sql stable security definer set search_path = public as $fn$
+  select public.is_admin()
+      or (
+           (not p_members_only or public.is_community())
+           and (not p_team_only or (p_sport is not null and public.is_on_team(p_sport)))
+         )
+$fn$;
+
 create or replace function public.can_sign_up(p_event uuid)
 returns boolean language sql stable security definer set search_path = public as $fn$
   select public.is_school() and exists (
@@ -434,6 +479,7 @@ returns boolean language sql stable security definer set search_path = public as
      where e.id = p_event
        and e.signup_enabled
        and not e.cancelled
+       and public.can_see_event(e.members_only, e.team_only, e.sport_id)
        and now() < coalesce(e.signup_deadline, e.starts_at)
        and (e.capacity is null
             or (select count(*) from public.event_signups s where s.event_id = e.id) < e.capacity)
@@ -564,10 +610,30 @@ drop policy if exists sports_admin on public.sports;
 create policy sports_admin on public.sports for all to authenticated
   using (public.is_admin()) with check (public.is_admin());
 
--- events: any signed-in account, unless members_only (community only).
+-- events: any signed-in account, unless members_only (community only)
+-- or team_only (that team's roster + their parents).
 drop policy if exists events_read on public.events;
 create policy events_read on public.events for select to authenticated
-  using (not members_only or public.is_community());
+  using (public.can_see_event(members_only, team_only, sport_id));
+
+-- rosters: admins manage them; you can see your own rows and your
+-- children's, which is how the site knows "my teams".
+alter table public.team_members enable row level security;
+
+drop policy if exists team_members_read on public.team_members;
+create policy team_members_read on public.team_members for select to authenticated
+  using (
+    public.is_admin()
+    or email = public.jwt_email()
+    or exists (
+      select 1 from public.parent_links pl join public.profiles child on child.id = pl.student_id
+       where pl.parent_id = auth.uid() and child.email = team_members.email
+    )
+  );
+
+drop policy if exists team_members_admin on public.team_members;
+create policy team_members_admin on public.team_members for all to authenticated
+  using (public.is_admin()) with check (public.is_admin());
 
 drop policy if exists events_admin on public.events;
 create policy events_admin on public.events for all to authenticated
@@ -638,6 +704,94 @@ create policy media_admin_delete on storage.objects for delete to authenticated
   using (bucket_id = 'media' and public.is_admin());
 
 -- ---------------------------------------------------------------------
+-- 10b. "Add to Google Calendar" subscription feed.
+--
+--    Each user gets a private, unguessable token. Google/Apple/Outlook
+--    fetch https://<site>/ical/<token>.ics (a Cloudflare Pages Function),
+--    which calls calendar_feed(token) with the public anon key. The token
+--    stands in for the login, and the function applies the same
+--    visibility rules as the site, so team-only events go to that team only.
+-- ---------------------------------------------------------------------
+create table if not exists public.calendar_feeds (
+  user_id     uuid primary key references public.profiles(id) on delete cascade,
+  token       text unique not null
+                default replace(gen_random_uuid()::text, '-', '') || replace(gen_random_uuid()::text, '-', ''),
+  created_at  timestamptz not null default now()
+);
+alter table public.calendar_feeds enable row level security;
+-- No policies: only the two functions below touch it.
+
+-- Your feed token (created on first ask). p_reset = true issues a new one,
+-- which disconnects any calendar using the old link.
+create or replace function public.my_calendar_feed(p_reset boolean default false)
+returns text language plpgsql volatile security definer set search_path = public as $fn$
+declare
+  t text;
+begin
+  if auth.uid() is null then
+    raise exception 'not_signed_in' using errcode = '42501';
+  end if;
+  if p_reset then
+    delete from public.calendar_feeds where user_id = auth.uid();
+  end if;
+  insert into public.calendar_feeds (user_id) values (auth.uid()) on conflict (user_id) do nothing;
+  select token into t from public.calendar_feeds where user_id = auth.uid();
+  return t;
+end;
+$fn$;
+
+create or replace function public.calendar_feed(p_token text)
+returns jsonb language plpgsql stable security definer set search_path = public as $fn$
+declare
+  uid uuid;
+  em text;
+  adm boolean;
+  community boolean;
+begin
+  if p_token is null or length(p_token) <> 64 then
+    return null;
+  end if;
+
+  select f.user_id, p.email into uid, em
+    from public.calendar_feeds f join public.profiles p on p.id = f.user_id
+   where f.token = p_token;
+  if uid is null then
+    return null;
+  end if;
+
+  adm := em = any (select lower(trim(x)) from unnest(public.admin_emails()) as x);
+  community := adm
+    or split_part(em, '@', 2) = public.school_domain()
+    or exists (select 1 from public.parent_links where parent_id = uid)
+    or exists (select 1 from public.profiles where id = uid and kind = 'parent' and admin_verified);
+
+  return coalesce((
+    select jsonb_agg(jsonb_build_object(
+             'id', e.id, 'title', e.title, 'kind', e.kind, 'sport', s.name,
+             'starts_at', e.starts_at, 'ends_at', e.ends_at, 'all_day', e.all_day,
+             'location', e.location, 'opponent', e.opponent, 'home_away', e.home_away,
+             'description', e.description, 'cancelled', e.cancelled, 'updated_at', e.updated_at
+           ) order by e.starts_at)
+      from public.events e
+      left join public.sports s on s.id = e.sport_id
+     where e.starts_at > now() - interval '60 days'
+       and e.starts_at < now() + interval '400 days'
+       and (adm or (
+             (not e.members_only or community)
+             and (not e.team_only or (e.sport_id is not null and (
+                   exists (select 1 from public.team_members tm where tm.sport_id = e.sport_id and tm.email = em)
+                   or exists (
+                        select 1 from public.parent_links pl
+                          join public.profiles child on child.id = pl.student_id
+                          join public.team_members tm on tm.email = child.email
+                         where pl.parent_id = uid and tm.sport_id = e.sport_id)
+                 )))
+           ))
+  ), '[]'::jsonb);
+end;
+$fn$;
+
+-- ---------------------------------------------------------------------
 -- 11. Function grants. Supabase grants EXECUTE to anon by default; the
 --     RPCs below mean nothing without a user, so keep them signed-in only.
 -- ---------------------------------------------------------------------
@@ -646,3 +800,7 @@ revoke execute on function public.redeem_parent_invite(text, text)   from anon, 
 grant  execute on function public.create_parent_invite()             to authenticated;
 grant  execute on function public.redeem_parent_invite(text, text)   to authenticated;
 grant  execute on function public.my_access()                        to anon, authenticated;
+revoke execute on function public.my_calendar_feed(boolean)          from anon, public;
+grant  execute on function public.my_calendar_feed(boolean)          to authenticated;
+-- The feed is fetched by calendar apps with no login; the token is the key.
+grant  execute on function public.calendar_feed(text)                to anon, authenticated;

@@ -209,7 +209,7 @@ export default function Family() {
             <p className="mt-4 text-xs faint">
               {sportById.size > 0 && (
                 <>
-                  Tip: follow your child’s sports on each <Link to="/sports" className="underline">sport page</Link>, then use “My teams” on the calendar.
+                  Your child’s teams already show on the calendar. To get everything in your own calendar app, use “Add to Google Calendar” on the <Link to="/calendar" className="underline">calendar page</Link>.
                 </>
               )}
             </p>

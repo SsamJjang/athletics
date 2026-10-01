@@ -119,7 +119,8 @@ export default function EventDrawer({
           <div className="flex flex-wrap items-center gap-1.5">
             <KindTag kind={event.kind} />
             <SportTag sport={sport} />
-            {event.members_only && <span className="tag bg-surface-2">Members only</span>}
+            {event.team_only && <span className="tag bg-ink text-paper">🔒 Team only</span>}
+            {event.members_only && !event.team_only && <span className="tag bg-surface-2">GCS community</span>}
           </div>
           <button type="button" className="icon-btn -mr-2 -mt-1" onClick={onClose} aria-label="Close">
             <CloseIcon />

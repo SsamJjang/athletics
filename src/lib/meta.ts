@@ -42,3 +42,19 @@ export const SPORT_COLORS = [
   '#E4462B', '#EA580C', '#F59E0B', '#A16207', '#16A34A', '#0D9488',
   '#0EA5E9', '#2563EB', '#4F46E5', '#8B5CF6', '#DB2777', '#475569',
 ]
+
+/**
+ * Text color that stays readable on an event's fill: dark ink on light
+ * colors (yellow, sky blue), white on everything else.
+ */
+export function textOn(color: string) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(color.trim())
+  if (!m) return '#fff'
+  const n = parseInt(m[1], 16)
+  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => {
+    const c = v / 255
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+  })
+  const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b
+  return lum > 0.36 ? '#1b1314' : '#fff'
+}

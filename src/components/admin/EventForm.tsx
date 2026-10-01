@@ -11,11 +11,10 @@ import MarkdownField from './MarkdownField'
 
 type Draft = Omit<GEvent, 'id' | 'series_id' | 'created_at'>
 
-function blank(day?: Date): Draft {
-  const start = day ? new Date(day) : new Date()
-  start.setHours(15, 30, 0, 0)
-  const end = new Date(start)
-  end.setHours(17, 0, 0, 0)
+function blank(day?: Date, exactStart?: Date): Draft {
+  const start = exactStart ? new Date(exactStart) : day ? new Date(day) : new Date()
+  if (!exactStart) start.setHours(15, 30, 0, 0)
+  const end = new Date(start.getTime() + (exactStart ? 60 : 90) * 6e4)
   return {
     title: '',
     kind: 'game',
@@ -33,9 +32,14 @@ function blank(day?: Date): Draft {
     result: '',
     outcome: null,
     members_only: false,
+    team_only: false,
     cancelled: false,
   }
 }
+
+type Visibility = 'everyone' | 'community' | 'team'
+
+const visibilityOf = (d: Draft): Visibility => (d.team_only ? 'team' : d.members_only ? 'community' : 'everyone')
 
 /** Date part of an ISO string as yyyy-mm-dd, for all-day inputs. */
 const dateOnly = (iso: string | null) => (iso ? toLocalInput(iso).slice(0, 10) : '')
@@ -43,30 +47,35 @@ const dateOnly = (iso: string | null) => (iso ? toLocalInput(iso).slice(0, 10) :
 export default function EventForm({
   event,
   defaultDay,
+  defaultStart,
   onClose,
   onSaved,
 }: {
   event?: GEvent | null
   defaultDay?: Date
+  /** Exact start, when created by clicking an empty slot in Week/Day view. */
+  defaultStart?: Date
   onClose: () => void
   onSaved: () => void
 }) {
   const { session } = useAuth()
   const { sports } = useData()
   const toast = useToast()
-  const [d, setD] = useState<Draft>(() => (event ? { ...event } : blank(defaultDay)))
+  const [d, setD] = useState<Draft>(() => (event ? { ...event } : blank(defaultDay, defaultStart)))
   const [repeatUntil, setRepeatUntil] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setD((prev) => ({ ...prev, [k]: v }))
 
   const isGame = d.kind === 'game' || d.kind === 'tournament'
+  const sportName = d.sport_id ? sports.find((s) => s.id === d.sport_id)?.name : null
 
   async function save(e: FormEvent) {
     e.preventDefault()
     setError(null)
     if (!d.title.trim()) return setError('Give it a title.')
     if (d.ends_at && new Date(d.ends_at) < new Date(d.starts_at)) return setError('It ends before it starts.')
+    if (d.team_only && !d.sport_id) return setError('A team-only event needs a sport, so the site knows which team sees it.')
     setBusy(true)
 
     const row = {
@@ -172,6 +181,7 @@ export default function EventForm({
                 onClick={() => {
                   set('kind', k.id as EventKind)
                   if (k.id === 'deadline') set('all_day', false)
+                  if (!event && d.sport_id) set('team_only', k.id === 'practice' || k.id === 'meeting')
                 }}
               >
                 <span className="dot" style={{ ['--pill' as string]: k.color }} />
@@ -186,7 +196,11 @@ export default function EventForm({
             <input className="input" value={d.title} onChange={(e) => set('title', e.target.value)} placeholder={d.kind === 'deadline' ? 'Basketball tryout sign-up closes' : 'Varsity vs. …'} autoFocus />
           </Field>
           <Field label="Sport">
-            <select className="input" value={d.sport_id ?? ''} onChange={(e) => set('sport_id', e.target.value || null)}>
+            <select
+              className="input"
+              value={d.sport_id ?? ''}
+              onChange={(e) => setD((p) => ({ ...p, sport_id: e.target.value || null, team_only: e.target.value ? p.team_only : false }))}
+            >
               <option value="">All / general</option>
               {sports.map((s) => (
                 <option key={s.id} value={s.id}>
@@ -195,6 +209,40 @@ export default function EventForm({
               ))}
             </select>
           </Field>
+        </div>
+
+        <div className="field">
+          <span className="label">Who can see this?</span>
+          <div className="grid gap-2 sm:grid-cols-3">
+            {(
+              [
+                ['everyone', 'Everyone', 'All signed-in accounts'],
+                ['community', 'GCS community', 'Students, staff & verified parents'],
+                ['team', 'Team only', sportName ? `${sportName} roster + their parents` : 'Pick a sport first'],
+              ] as [Visibility, string, string][]
+            ).map(([id, label, hint]) => {
+              const on = visibilityOf(d) === id
+              const disabled = id === 'team' && !d.sport_id
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  disabled={disabled}
+                  aria-pressed={on}
+                  onClick={() => setD((p) => ({ ...p, members_only: id === 'community', team_only: id === 'team' }))}
+                  className={`rounded-xl border p-3 text-left transition disabled:cursor-not-allowed disabled:opacity-45 ${
+                    on ? 'border-signal bg-[var(--signal-soft)] shadow-[inset_0_0_0_1px_var(--signal)]' : 'border-[var(--line-strong)] hover:border-ink'
+                  }`}
+                >
+                  <span className="block text-sm font-semibold">
+                    {id === 'team' && '🔒 '}
+                    {label}
+                  </span>
+                  <span className="mt-0.5 block text-xs muted">{hint}</span>
+                </button>
+              )
+            })}
+          </div>
         </div>
 
         <label className="check">
@@ -324,18 +372,12 @@ export default function EventForm({
           </fieldset>
         )}
 
-        <div className="flex flex-wrap gap-x-6 gap-y-3">
+        {event && (
           <label className="check">
-            <input type="checkbox" checked={d.members_only} onChange={(e) => set('members_only', e.target.checked)} />
-            Members only <span className="text-xs faint">(hidden from unverified parent accounts)</span>
+            <input type="checkbox" checked={d.cancelled} onChange={(e) => set('cancelled', e.target.checked)} />
+            Cancelled
           </label>
-          {event && (
-            <label className="check">
-              <input type="checkbox" checked={d.cancelled} onChange={(e) => set('cancelled', e.target.checked)} />
-              Cancelled
-            </label>
-          )}
-        </div>
+        )}
       </form>
     </Modal>
   )

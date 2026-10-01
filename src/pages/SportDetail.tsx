@@ -107,7 +107,7 @@ export default function SportDetail() {
               className={`btn ${following ? 'bg-white text-black' : 'bg-black/50 text-white backdrop-blur hover:bg-black/70'}`}
               onClick={() => {
                 void toggleFollow(sport.id)
-                toast(following ? `Unfollowed ${sport.name}` : `Following ${sport.name} — use “My teams” on the calendar`)
+                toast(following ? `Unfollowed ${sport.name}` : `Following ${sport.name}`)
               }}
             >
               {following ? '★ Following' : '☆ Follow'}

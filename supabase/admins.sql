@@ -37,7 +37,9 @@ as $fn$
     '29kim.jihoo@gcssongdo.co.kr',
     '32kweon.aiden@gcssongdo.co.kr',
     '32joo.yvonne@gcssongdo.co.kr',
-    '28gu.hajun@gcssongdo.co.kr'
+    '28gu.hajun@gcssongdo.co.kr',
+    'seong.franchesca@gcssongdo.co.kr',
+    'ahn.david@gcssongdo.co.kr'
     -- ↑↑↑ no comma after the last one ↑↑↑
   ]::text[];
 $fn$;

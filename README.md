@@ -94,10 +94,13 @@ npm run dev
 
 Everything is edited on the site itself. Look for **+ Event / + Notice / + Sport / + Athlete** buttons and **Edit** buttons, or use the **Admin** tab.
 
-- **Events** come in these types: game, tournament, tryout, sign-up deadline, practice, meeting. Practices can repeat weekly, and each week can still be edited or cancelled on its own.
+- **Events** come in these types: game, tournament, tryout, deadline, practice, meeting. Practices can repeat weekly, and each week can still be edited or cancelled on its own. In Week or Day view, clicking an empty time slot starts a new event at that time.
+- **Who can see an event:** *Everyone* (any signed-in account), *GCS community* (students, staff and verified parents), or *🔒 Team only* (that sport's roster plus their verified parents). Big events go to everyone; a team's practices and meetings go to the team.
+- **Team rosters:** go to **Admin → Team rosters**, pick a sport, and paste school emails. Students can be added before they've ever signed in. Being on a roster is what shows someone that team's team-only events.
 - **Sign-ups**: tick "Students sign up for this", and optionally set when sign-ups close and how many spots there are. Open the event on the calendar to see the list, and click **Export CSV** for a spreadsheet.
 - **Results**: after a game, edit it and fill in the score and win/loss/draw. It then appears in the home page ticker and the sport's season record.
-- **Members only** hides an event or notice from logged-out visitors.
+- **Members only** on a notice hides it from unverified parent accounts.
+- **Add to Google Calendar:** anyone can subscribe from the calendar sidebar. Events, including their own team's private ones, then show up in their Google, Apple or Outlook calendar and stay in sync. Google refreshes subscribed calendars every few hours, so the site is always the most current.
 - **Athlete spotlights** are only visible to students, staff and verified parents. Get the student's OK before posting.
 - Text fields support simple formatting: use the **B / I / H / •** buttons and **Preview**. Photos are resized automatically, and location data is stripped from them.
 
@@ -108,6 +111,8 @@ supabase/
   schema.sql      tables, sign-up gate, parent codes, RLS, storage
   admins.sql      ✏️ the admin email list
   seed.sql        starter sports
+functions/
+  ical/[token].ts the personal calendar feed (a Cloudflare Pages Function)
 src/
   pages/          Home, Calendar, Sports, SportDetail, Notices, Athletes,
                   Login, Family (parents), Me (students), Admin

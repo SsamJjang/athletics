@@ -12,13 +12,15 @@ import AthleteForm from '../components/admin/AthleteForm'
 import EventForm from '../components/admin/EventForm'
 import NoticeForm from '../components/admin/NoticeForm'
 import SportForm from '../components/admin/SportForm'
+import TeamsTab from '../components/admin/TeamsTab'
 import { Avatar, EmptyState, PageHeader, SeasonTag, Spinner, useToast } from '../components/ui'
 
-type Tab = 'events' | 'notices' | 'sports' | 'athletes' | 'people'
+type Tab = 'events' | 'notices' | 'sports' | 'teams' | 'athletes' | 'people'
 const TABS: { id: Tab; label: string }[] = [
   { id: 'events', label: 'Events' },
   { id: 'notices', label: 'Notices' },
   { id: 'sports', label: 'Sports' },
+  { id: 'teams', label: 'Team rosters' },
   { id: 'athletes', label: 'Athletes' },
   { id: 'people', label: 'People & families' },
 ]
@@ -58,6 +60,7 @@ export default function Admin() {
       {tab === 'notices' && <NoticesTab />}
       {tab === 'sports' && <SportsTab />}
       {tab === 'athletes' && <AthletesTab />}
+      {tab === 'teams' && <TeamsTab />}
       {tab === 'people' && <PeopleTab />}
     </div>
   )
@@ -143,7 +146,8 @@ function EventsTab() {
                       <span className={`font-semibold ${e.cancelled ? 'line-through opacity-60' : ''}`}>{e.title}</span>
                       {s && <span className="ml-2 text-xs muted">{s.emoji} {s.name}</span>}
                       {e.series_id && <span className="ml-2 text-xs faint">↻ weekly</span>}
-                      {e.members_only && <span className="ml-2 tag bg-surface-2">Members</span>}
+                      {e.team_only && <span className="ml-2 tag bg-ink text-paper">🔒 Team</span>}
+                      {e.members_only && !e.team_only && <span className="ml-2 tag bg-surface-2">Community</span>}
                     </td>
                     <td className="px-4 py-3">
                       <span className="tag" style={{ color: k.color, background: `color-mix(in oklab, ${k.color} 12%, transparent)` }}>{k.label}</span>
